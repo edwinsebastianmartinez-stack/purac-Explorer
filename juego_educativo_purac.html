@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puracé Explorer 🏔️✨ - Juego Educativo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #064e3b 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+        
+        .font-game {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* Botones estilo gamer 3D */
+        .btn-gamer {
+            transition: all 0.15s ease-in-out;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.4);
+            text-shadow: 1px 2px 2px rgba(0,0,0,0.5);
+        }
+        .btn-gamer:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        .btn-gamer:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+        }
+
+        .btn-green { background: linear-gradient(180deg, #22c55e, #15803d); }
+        .btn-blue { background: linear-gradient(180deg, #3b82f6, #1d4ed8); }
+        .btn-amber { background: linear-gradient(180deg, #f59e0b, #b45309); }
+        .btn-purple { background: linear-gradient(180deg, #a855f7, #6b21a8); }
+
+        /* Fichas de Rompecabezas */
+        .puzzle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+            aspect-ratio: 4/3;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .puzzle-tile {
+            position: relative;
+            background-size: 300% 300%;
+            transition: all 0.5s ease-in-out;
+        }
+
+        .puzzle-tile.locked {
+            background-image: none !important;
+            background-color: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed #475569;
+        }
+
+        .puzzle-tile.locked::after {
+            content: '🔒';
+            font-size: 1.8rem;
+            opacity: 0.7;
+        }
+
+        .puzzle-tile.unlocked {
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Top Header Bar -->
+    <header class="glass-card sticky top-0 z-50 px-4 py-3 border-b border-emerald-500/30">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showScreen('screen-home')">
+                <span class="text-3xl">🌋</span>
+                <div>
+                    <h1 class="text-xl font-game text-amber-400 tracking-wide leading-none">Puracé Explorer</h1>
+                    <p class="text-xs text-emerald-400 font-semibold">Territorio Ancestral Koko-nuko</p>
+                </div>
+            </div>
+
+            <!-- Stats Bar (Nivel / Vidas / Puntos) -->
+            <div id="game-stats" class="hidden flex items-center space-x-4 bg-slate-900/80 px-4 py-1.5 rounded-full border border-slate-700">
+                <div class="flex items-center space-x-1">
+                    <span class="text-red-500 text-lg">❤️</span>
+                    <span id="lives-count" class="font-bold text-lg text-white">3</span>
+                </div>
+                <div class="h-4 w-px bg-slate-700"></div>
+                <div class="flex items-center space-x-1">
+                    <span class="text-amber-400 text-lg">⭐</span>
+                    <span id="score-count" class="font-bold text-lg text-amber-300">0</span>
+                </div>
+                <div class="h-4 w-px bg-slate-700"></div>
+                <div id="guardian-badge" class="flex items-center space-x-1 text-xs text-emerald-300 font-bold">
+                    <!-- Avatar guardián activo -->
+                </div>
+            </div>
+
+            <!-- Botón Álbum de Galería -->
+            <button onclick="openAlbumModal()" class="btn-gamer btn-purple px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-2">
+                <i class="fa-solid fa-book-bookmark text-amber-300"></i>
+                <span>Álbum</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-5xl w-full mx-auto p-4 flex flex-col justify-center">
+
+        <!-- SCREEN 1: PORTADA INSTITUCIONAL Y SELECCIÓN -->
+        <section id="screen-home" class="space-y-6">
+            <!-- Tarjeta Principal con Imagen del Cóndor -->
+            <div class="glass-card rounded-3xl p-6 sm:p-8 text-center relative overflow-hidden shadow-2xl border-2 border-emerald-500/40">
+                
+                <!-- Imagen de Portada: Cóndor desplegado -->
+                <div class="relative h-56 sm:h-72 w-full rounded-2xl overflow-hidden mb-6 group border-2 border-amber-400/50">
+                    <img src="https://images.unsplash.com/photo-1591824438708-ce405f36ba3d?q=80&w=1200&auto=format&fit=crop" 
+                         alt="Cóndor de los Andes" 
+                         class="w-full h-full object-cover object-top transition duration-700 group-hover:scale-105"
+                         id="condor-cover-img"
+                         onerror="this.src='https://placehold.co/800x400/1e293b/fbbf24?text=Condor+de+los+Andes'">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+                    <div class="absolute bottom-4 left-4 right-4 text-left">
+                        <span class="bg-amber-500/90 text-slate-950 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Proyecto Educativo</span>
+                        <h2 class="text-2xl sm:text-4xl font-game text-white mt-1 drop-shadow-md">Puracé Explorer 🏔️✨</h2>
+                    </div>
+                </div>
+
+                <!-- Datos Institucionales Informativos -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-900/90 p-4 rounded-2xl text-left border border-slate-700/80 mb-6 text-sm">
+                    <div class="space-y-1">
+                        <p class="text-emerald-400 font-bold"><i class="fa-solid fa-school mr-2"></i>Institución Educativa:</p>
+                        <p class="text-slate-200 font-semibold pl-6">Manuel María Mosquera</p>
+                        <p class="text-emerald-400 font-bold pt-2"><i class="fa-solid fa-user-graduate mr-2"></i>Estudiante:</p>
+                        <p class="text-slate-200 font-semibold pl-6">Edwin Sebastian Martinez Castillo</p>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="text-amber-400 font-bold"><i class="fa-solid fa-layer-group mr-2"></i>Grado:</p>
+                        <p class="text-slate-200 font-semibold pl-6">Décimo B (10°B)</p>
+                        <p class="text-amber-400 font-bold pt-2"><i class="fa-solid fa-book-open mr-2"></i>Componente / Área:</p>
+                        <p class="text-slate-200 font-semibold pl-6">Inglés & Informática Didáctica</p>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <button onclick="showScreen('screen-avatar')" class="btn-gamer btn-green text-lg px-8 py-4 rounded-2xl font-game flex items-center justify-center space-x-3 text-white">
+                        <i class="fa-solid fa-gamepad text-2xl"></i>
+                        <span>¡COMENZAR AVENTURA!</span>
+                    </button>
+                    <button onclick="openAlbumModal()" class="btn-gamer btn-amber text-lg px-6 py-4 rounded-2xl font-game flex items-center justify-center space-x-3 text-slate-950">
+                        <i class="fa-solid fa-images text-xl"></i>
+                        <span>ÁLVARO DE LOGROS</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: SELECCIÓN DE GUARDIÁN DE PURACÉ -->
+        <section id="screen-avatar" class="hidden space-y-6">
+            <div class="text-center space-y-2">
+                <h2 class="text-3xl font-game text-amber-400">Elige tu Guardián Ancestral 🛡️</h2>
+                <p class="text-slate-300 text-sm max-w-lg mx-auto">Cada guardián posee sabiduría ancestral para acompañarte en la expedición por Puracé y sus tesoros naturales.</p>
+            </div>
+
+            <!-- Tarjetas de Avatares -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Avatar 1: Volcán Puracé -->
+                <div onclick="selectAvatar('Volcán Puracé', '🔥', 'https://images.unsplash.com/photo-1589802829985-817e51171b92?q=80&w=600&auto=format&fit=crop')" 
+                     class="glass-card rounded-2xl p-4 cursor-pointer hover:border-amber-400 transition transform hover:-translate-y-2 border-2 border-transparent text-center group">
+                    <div class="h-44 w-full rounded-xl overflow-hidden mb-3 border border-slate-700">
+                        <img src="https://images.unsplash.com/photo-1589802829985-817e51171b92?q=80&w=600&auto=format&fit=crop" 
+                             alt="Volcán Puracé" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    </div>
+                    <span class="inline-block px-3 py-1 bg-red-500/20 text-red-400 font-bold rounded-full text-xs mb-1">Espíritu de Fuego</span>
+                    <h3 class="text-xl font-game text-white">Volcán Puracé</h3>
+                    <p class="text-xs text-slate-400 mt-2">Símbolo de fuerza volcánica y la historia geológica del Cauca.</p>
+                </div>
+
+                <!-- Avatar 2: Oso de Anteojos -->
+                <div onclick="selectAvatar('Oso de Anteojos', '🐻', 'https://images.unsplash.com/photo-1564349683136-77e08dba1ef9?q=80&w=600&auto=format&fit=crop')" 
+                     class="glass-card rounded-2xl p-4 cursor-pointer hover:border-emerald-400 transition transform hover:-translate-y-2 border-2 border-transparent text-center group">
+                    <div class="h-44 w-full rounded-xl overflow-hidden mb-3 border border-slate-700">
+                        <img src="https://images.unsplash.com/photo-1564349683136-77e08dba1ef9?q=80&w=600&auto=format&fit=crop" 
+                             alt="Oso de Anteojos" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    </div>
+                    <span class="inline-block px-3 py-1 bg-emerald-500/20 text-emerald-400 font-bold rounded-full text-xs mb-1">Guardián del Páramo</span>
+                    <h3 class="text-xl font-game text-white">Oso Andino</h3>
+                    <p class="text-xs text-slate-400 mt-2">Protector de la fauna, los frailejones y el agua cristalina.</p>
+                </div>
+
+                <!-- Avatar 3: Cóndor de los Andes -->
+                <div onclick="selectAvatar('Cóndor Andino', '🦅', 'https://images.unsplash.com/photo-1591824438708-ce405f36ba3d?q=80&w=600&auto=format&fit=crop')" 
+                     class="glass-card rounded-2xl p-4 cursor-pointer hover:border-sky-400 transition transform hover:-translate-y-2 border-2 border-transparent text-center group">
+                    <div class="h-44 w-full rounded-xl overflow-hidden mb-3 border border-slate-700">
+                        <img src="https://images.unsplash.com/photo-1591824438708-ce405f36ba3d?q=80&w=600&auto=format&fit=crop" 
+                             alt="Cóndor de los Andes" class="w-full h-full object-cover group-hover:scale-110 transition duration-500">
+                    </div>
+                    <span class="inline-block px-3 py-1 bg-sky-500/20 text-sky-400 font-bold rounded-full text-xs mb-1">Rey de los Cielos</span>
+                    <h3 class="text-xl font-game text-white">Cóndor de los Andes</h3>
+                    <p class="text-xs text-slate-400 mt-2">Vuela alto sobre los picos y cuida la tradición Koko-nuko.</p>
+                </div>
+            </div>
+
+            <div class="text-center pt-4">
+                <button onclick="showScreen('screen-home')" class="btn-gamer bg-slate-700 text-slate-300 px-6 py-2.5 rounded-xl text-sm font-bold">
+                    <i class="fa-solid fa-arrow-left mr-2"></i>Volver
+                </button>
+            </div>
+        </section>
+
+        <!-- SCREEN 3: SELECCIÓN DE NIVELES -->
+        <section id="screen-levels" class="hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-game text-emerald-400">Mapa de Expedición 🗺️</h2>
+                    <p class="text-slate-300 text-sm">Completa cada rompecabezas respondiendo trivias para desbloquear las fotos reales.</p>
+                </div>
+                <button onclick="showScreen('screen-avatar')" class="btn-gamer bg-slate-800 text-slate-300 px-4 py-2 rounded-xl text-xs font-bold">
+                    Cambiar Avatar
+                </button>
+            </div>
+
+            <!-- Grid de Niveles -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <!-- Nivel 1 -->
+                <div id="level-card-1" class="glass-card rounded-2xl p-5 border-2 border-emerald-500/50 flex flex-col justify-between space-y-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-2xl font-game text-emerald-400 border border-emerald-500/40">1</div>
+                        <div>
+                            <span class="text-xs text-emerald-400 font-bold uppercase">Nivel 1</span>
+                            <h3 class="text-xl font-game text-white">Volcán Puracé 🌋</h3>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300">Descubre la majestuosidad del cráter y el volcán nevado con cielo azul.</p>
+                    <button onclick="startLevel(1)" class="btn-gamer btn-green w-full py-3 rounded-xl font-game text-sm">
+                        ¡EXPLORAR NIVEL 1!
+                    </button>
+                </div>
+
+                <!-- Nivel 2 -->
+                <div id="level-card-2" class="glass-card rounded-2xl p-5 border-2 border-slate-700/50 flex flex-col justify-between space-y-4 opacity-75">
+                    <div class="flex items-center space-x-3">
+                        <div id="level-icon-2" class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-2xl font-game text-slate-400 border border-slate-700">🔒</div>
+                        <div>
+                            <span class="text-xs text-sky-400 font-bold uppercase">Nivel 2</span>
+                            <h3 class="text-xl font-game text-white">Termales de San Juan ♨️</h3>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300">Aguas azufradas, puente de madera y fuentes termales naturales.</p>
+                    <button id="level-btn-2" onclick="startLevel(2)" disabled class="btn-gamer bg-slate-800 text-slate-500 w-full py-3 rounded-xl font-game text-sm cursor-not-allowed">
+                        BLOQUEADO (Gana Nivel 1)
+                    </button>
+                </div>
+
+                <!-- Nivel 3 -->
+                <div id="level-card-3" class="glass-card rounded-2xl p-5 border-2 border-slate-700/50 flex flex-col justify-between space-y-4 opacity-75">
+                    <div class="flex items-center space-x-3">
+                        <div id="level-icon-3" class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-2xl font-game text-slate-400 border border-slate-700">🔒</div>
+                        <div>
+                            <span class="text-xs text-amber-400 font-bold uppercase">Nivel 3</span>
+                            <h3 class="text-xl font-game text-white">Páramo de Frailejones 🌿</h3>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300">Un mar vegetal de frailejones purificadores de agua.</p>
+                    <button id="level-btn-3" onclick="startLevel(3)" disabled class="btn-gamer bg-slate-800 text-slate-500 w-full py-3 rounded-xl font-game text-sm cursor-not-allowed">
+                        BLOQUEADO (Gana Nivel 2)
+                    </button>
+                </div>
+
+                <!-- Nivel 4 -->
+                <div id="level-card-4" class="glass-card rounded-2xl p-5 border-2 border-slate-700/50 flex flex-col justify-between space-y-4 opacity-75">
+                    <div class="flex items-center space-x-3">
+                        <div id="level-icon-4" class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-2xl font-game text-slate-400 border border-slate-700">🔒</div>
+                        <div>
+                            <span class="text-xs text-purple-400 font-bold uppercase">Nivel 4</span>
+                            <h3 class="text-xl font-game text-white">Cascada Bedón / Calaguala 💦</h3>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-300">Imponente caída de agua entre la roca ancestral y el puente.</p>
+                    <button id="level-btn-4" onclick="startLevel(4)" disabled class="btn-gamer bg-slate-800 text-slate-500 w-full py-3 rounded-xl font-game text-sm cursor-not-allowed">
+                        BLOQUEADO (Gana Nivel 3)
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 4: TABLERO DE JUEGO (PREGUNTAS + ROMPECABEZAS) -->
+        <section id="screen-game" class="hidden space-y-6">
+            
+            <!-- Barra del Nivel Activo -->
+            <div class="flex flex-col sm:flex-row justify-between items-center glass-card p-4 rounded-2xl gap-2 border border-slate-700">
+                <div>
+                    <span id="current-level-tag" class="text-xs font-bold text-amber-400 uppercase tracking-widest">NIVEL 1</span>
+                    <h2 id="current-level-title" class="text-2xl font-game text-white">Volcán Puracé</h2>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-slate-400">Progreso Fichas:</span>
+                    <div class="w-32 bg-slate-800 h-4 rounded-full overflow-hidden border border-slate-700 p-0.5">
+                        <div id="puzzle-progress-bar" class="bg-gradient-to-r from-amber-400 to-emerald-400 h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
+                    </div>
+                    <span id="puzzle-count" class="text-xs font-bold text-emerald-400">0/9</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- Columna Izquierda: Rompecabezas (9 Piezas) -->
+                <div class="lg:col-span-5 flex flex-col items-center glass-card p-4 rounded-2xl border border-slate-700">
+                    <div class="text-center mb-3">
+                        <h4 class="text-sm font-bold text-slate-300">Fotografía Desbloqueable 🧩</h4>
+                        <p class="text-xs text-slate-400">Acierta preguntas para armar la imagen</p>
+                    </div>
+
+                    <!-- Cuadrícula 3x3 -->
+                    <div id="puzzle-grid" class="puzzle-grid">
+                        <!-- Las 9 fichas se generan dinámicamente con JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Trivia & Preguntas (Español e Inglés) -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="glass-card p-6 rounded-2xl border-2 border-emerald-500/40 relative">
+                        
+                        <!-- Header de la pregunta -->
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-700/60 pb-3">
+                            <span id="question-number" class="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">
+                                Pregunta 1 de 9
+                            </span>
+                            <span id="question-lang-tag" class="text-xs text-amber-400 font-bold bg-amber-400/10 px-2.5 py-1 rounded-md border border-amber-400/20">
+                                🇨🇴 Español / 🇬🇧 English
+                            </span>
+                        </div>
+
+                        <!-- Pregunta Texto -->
+                        <h3 id="question-text" class="text-lg sm:text-xl font-bold text-white mb-2 leading-relaxed">
+                            Cargando pregunta...
+                        </h3>
+                        <p id="question-subtext" class="text-xs text-emerald-300 italic mb-6">
+                            Subtexto pedagógico en inglés...
+                        </p>
+
+                        <!-- Opciones de Respuesta (A, B, C, D) -->
+                        <div id="answers-container" class="space-y-3">
+                            <!-- Se instancian dinámicamente -->
+                        </div>
+
+                        <!-- Retroalimentación / Explicación -->
+                        <div id="feedback-box" class="hidden mt-4 p-4 rounded-xl text-xs sm:text-sm font-semibold"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Botones de Navegación del Juego -->
+            <div class="flex justify-between items-center pt-2">
+                <button onclick="abandonGame()" class="btn-gamer bg-slate-800 text-slate-400 px-5 py-2.5 rounded-xl text-xs font-bold hover:text-white">
+                    <i class="fa-solid fa-door-open mr-2"></i>Salir al Mapa
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: ÁLBUM DE FOTOS DESBLOQUEABLES -->
+    <div id="modal-album" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="glass-card max-w-3xl w-full max-h-[90vh] overflow-y-auto rounded-3xl p-6 border-2 border-purple-500/40 relative">
+            
+            <button onclick="closeAlbumModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-2xl font-bold">
+                &times;
+            </button>
+
+            <div class="text-center space-y-2 mb-6">
+                <h3 class="text-2xl font-game text-amber-400">Álbum de Fotografía de Puracé 📷</h3>
+                <p class="text-xs text-slate-300">Completa los niveles del juego para desbloquear la galería en alta definición.</p>
+            </div>
+
+            <!-- Galería de 4 Fotos Turísticas -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                <!-- Card Foto 1 -->
+                <div class="bg-slate-900 p-3 rounded-2xl border border-slate-800 text-center">
+                    <div class="relative h-44 rounded-xl overflow-hidden mb-2">
+                        <img id="album-img-1" src="https://images.unsplash.com/photo-1589802829985-817e51171b92?q=80&w=600&auto=format&fit=crop" 
+                             class="w-full h-full object-cover filter blur-md grayscale transition duration-500">
+                        <div id="album-lock-1" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center">
+                            <span class="text-3xl">🔒</span>
+                            <span class="text-xs font-bold text-slate-400 mt-1">Completa Nivel 1</span>
+                        </div>
+                    </div>
+                    <h4 class="font-game text-white text-sm">Volcán Puracé</h4>
+                    <p class="text-[10px] text-emerald-400">Cauca, Colombia</p>
+                </div>
+
+                <!-- Card Foto 2 -->
+                <div class="bg-slate-900 p-3 rounded-2xl border border-slate-800 text-center">
+                    <div class="relative h-44 rounded-xl overflow-hidden mb-2">
+                        <img id="album-img-2" src="https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=600&auto=format&fit=crop" 
+                             class="w-full h-full object-cover filter blur-md grayscale transition duration-500">
+                        <div id="album-lock-2" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center">
+                            <span class="text-3xl">🔒</span>
+                            <span class="text-xs font-bold text-slate-400 mt-1">Completa Nivel 2</span>
+                        </div>
+                    </div>
+                    <h4 class="font-game text-white text-sm">Termales de San Juan</h4>
+                    <p class="text-[10px] text-sky-400">Puracé National Park</p>
+                </div>
+
+                <!-- Card Foto 3 -->
+                <div class="bg-slate-900 p-3 rounded-2xl border border-slate-800 text-center">
+                    <div class="relative h-44 rounded-xl overflow-hidden mb-2">
+                        <img id="album-img-3" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop" 
+                             class="w-full h-full object-cover filter blur-md grayscale transition duration-500">
+                        <div id="album-lock-3" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center">
+                            <span class="text-3xl">🔒</span>
+                            <span class="text-xs font-bold text-slate-400 mt-1">Completa Nivel 3</span>
+                        </div>
+                    </div>
+                    <h4 class="font-game text-white text-sm">Páramo de Frailejones</h4>
+                    <p class="text-[10px] text-amber-400">Resguardo Koko-nuko</p>
+                </div>
+
+                <!-- Card Foto 4 -->
+                <div class="bg-slate-900 p-3 rounded-2xl border border-slate-800 text-center">
+                    <div class="relative h-44 rounded-xl overflow-hidden mb-2">
+                        <img id="album-img-4" src="https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?q=80&w=600&auto=format&fit=crop" 
+                             class="w-full h-full object-cover filter blur-md grayscale transition duration-500">
+                        <div id="album-lock-4" class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center">
+                            <span class="text-3xl">🔒</span>
+                            <span class="text-xs font-bold text-slate-400 mt-1">Completa Nivel 4</span>
+                        </div>
+                    </div>
+                    <h4 class="font-game text-white text-sm">Cascada Bedón / Calaguala</h4>
+                    <p class="text-[10px] text-purple-400">Cauca, Colombia</p>
+                </div>
+
+            </div>
+
+            <div class="text-center mt-6">
+                <button onclick="closeAlbumModal()" class="btn-gamer btn-purple px-8 py-2.5 rounded-xl text-sm font-bold">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: VICTORIA Y DEBIDO NIVEL -->
+    <div id="modal-victory" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
+        <div class="glass-card max-w-md w-full rounded-3xl p-6 text-center space-y-4 border-2 border-emerald-400">
+            <span class="text-6xl animate-bounce inline-block">🏆</span>
+            <h3 class="text-2xl font-game text-amber-300">¡Nivel Completado!</h3>
+            <p id="victory-message" class="text-xs text-slate-300">Has revelado con éxito la imagen del nivel y aprendido sobre los tesoros de Puracé.</p>
+            
+            <div id="victory-img-preview" class="h-48 w-full rounded-2xl overflow-hidden border-2 border-emerald-400 my-2 shadow-lg">
+                <!-- Preview de la foto armada -->
+            </div>
+
+            <div class="flex flex-col space-y-2 pt-2">
+                <button onclick="nextLevelFromModal()" class="btn-gamer btn-green py-3 rounded-xl font-game text-sm">
+                    ¡Siguiente Nivel! 🚀
+                </button>
+                <button onclick="closeVictoryModal(); showScreen('screen-levels');" class="btn-gamer bg-slate-800 text-slate-300 py-2.5 rounded-xl font-bold text-xs">
+                    Ver Mapa
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BASE DE DATOS DE IMÁGENES POR NIVEL
+        const LEVEL_IMAGES = {
+            1: {
+                name: "Volcán Puracé 🌋",
+                url: "https://images.unsplash.com/photo-1589802829985-817e51171b92?q=80&w=600&auto=format&fit=crop"
+            },
+            2: {
+                name: "Las Termales de San Juan ♨️",
+                url: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?q=80&w=600&auto=format&fit=crop"
+            },
+            3: {
+                name: "Páramo de Frailejones 🌿",
+                url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=600&auto=format&fit=crop"
+            },
+            4: {
+                name: "Cascada Bedón / Calaguala 💦",
+                url: "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?q=80&w=600&auto=format&fit=crop"
+            }
+        };
+
+        // BANCO DE PREGUNTAS DIDÁCTICAS (Español / Inglés - Componente Interdisciplinar)
+        const QUESTIONS_DB = {
+            1: [
+                {
+                    q: "¿En qué departamento de Colombia se encuentra ubicado el Volcán Puracé?",
+                    sub: "In which department of Colombia is the Puracé Volcano located?",
+                    options: ["A) Nariño", "B) Cauca", "C) Huila", "D) Antioquia"],
+                    correct: 1,
+                    info: "¡Correcto! El Volcán Puracé se ubica en el departamento del Cauca, dentro de la Cordillera Central."
+                },
+                {
+                    q: "¿Qué pueblo indígena habita ancestralmente la zona del Resguardo de Puracé?",
+                    sub: "Which indigenous group historically inhabits the Puracé area?",
+                    options: ["A) Pueblo Koko-nuko", "B) Muisca", "C) Wayúu", "D) Emberá"],
+                    correct: 0,
+                    info: "¡Muy bien! El pueblo Koko-nuko es el guardián ancestral de estas tierras sagradas."
+                },
+                {
+                    q: "What is the meaning of 'Puracé' in the native language context?",
+                    sub: "¿Qué significa 'Puracé' en el contexto del lenguaje nativo?",
+                    options: ["A) Montaña verde", "B) Montaña de fuego / Agua de fuego", "C) Río de flores", "D) Sol naciente"],
+                    correct: 1,
+                    info: "¡Excelente! Puracé hace referencia al fuego y la actividad geotérmica de la montaña."
+                },
+                {
+                    q: "¿Cuál es una manifestación volcánica común visible en el Parque Puracé?",
+                    sub: "Which volcanic manifestation is commonly seen in Puracé?",
+                    options: ["A) Geysers de azufre y fumarolas", "B) Lava hirviendo constantemente", "C) Nieve perenne de 50 metros", "D) Corales marinos"],
+                    correct: 0,
+                    info: "¡Correcto! Fumarolas, fuentes termales y azufre son característicos del paisaje volcánico."
+                },
+                {
+                    q: "Which bird species flies over Puracé and is considered the king of the Andes?",
+                    sub: "¿Qué especie de ave vuela sobre Puracé y es considerada el rey de los Andes?",
+                    options: ["A) Eagle (Águila)", "B) Andean Condor (Cóndor de los Andes)", "C) Flamingo (Flamenco)", "D) Hummingbird (Colibrí)"],
+                    correct: 1,
+                    info: "¡Grandioso! El Cóndor de los Andes sobrevuela las majestuosas cumbres de Puracé."
+                },
+                {
+                    q: "¿Qué ecosistema rodea la parte baja y media del Volcán Puracé?",
+                    sub: "What ecosystem surrounds the middle and lower parts of Puracé?",
+                    options: ["A) Desierto tropical", "B) Páramo y Bosque Altoandino", "C) Manglar", "D) Selva Amazónica baja"],
+                    correct: 1,
+                    info: "¡Exacto! Los ecosistemas de Páramo y Bosque Altoandino proveen el agua a la región."
+                },
+                {
+                    q: "Puracé is part of a protected area called:",
+                    sub: "Puracé forma parte de un área protegida llamada:",
+                    options: ["A) Tayrona National Park", "B) Puracé National Natural Park", "C) Chingaza Park", "D) Amacayacu"],
+                    correct: 1,
+                    info: "¡Correcto! Es el Parque Nacional Natural Puracé, creado en 1961."
+                },
+                {
+                    q: "¿Qué importante río colombiano nace en el Macizo Colombiano cerca de Puracé?",
+                    sub: "Which major Colombian river rises in the Massif near Puracé?",
+                    options: ["A) Río Cauca y Río Magdalena", "B) Río Amazonas", "C) Río Orinoco", "D) Río Atrato"],
+                    correct: 0,
+                    info: "¡Excelente! El Cauca y el Magdalena nacen en este importante complejo hídrico."
+                },
+                {
+                    q: "What color is traditionally associated with sulfur deposits in Puracé?",
+                    sub: "¿Qué color se asocia tradicionalmente con los depósitos de azufre?",
+                    options: ["A) Red (Rojo)", "B) Yellow (Amarillo)", "C) Blue (Azul)", "D) Pink (Rosado)"],
+                    correct: 1,
+                    info: "¡Correcto! El azufre volcánico destaca por sus brillantes tonalidades amarillas."
+                }
+            ],
+            2: [
+                {
+                    q: "¿Qué son las Termales de San Juan en Puracé?",
+                    sub: "What are the Termales de San Juan in Puracé?",
+                    options: ["A) Un parque temático artificial", "B) Fuentes termales naturales ricas en azufre y minerales", "C) Una represa hidroeléctrica", "D) Una piscina olímpica"],
+                    correct: 1,
+                    info: "¡Muy bien! Son nacimientos de agua termal volcánica rodeados de misticismo y naturaleza."
+                },
+                {
+                    q: "What colors can be seen in the waters of Termales de San Juan due to minerals?",
+                    sub: "¿Qué colores se aprecian en las aguas de San Juan debido a los minerales?",
+                    options: ["A) Solo negro", "B) Tonos verdosos, turquesas y lechosos", "C) Rojo fosforescente", "D) Plateado"],
+                    correct: 1,
+                    info: "¡Correcto! Las mezclas de algas termófilas y azufre crean matices turquesas y verdosos únicos."
+                },
+                {
+                    q: "¿Por qué NO es permitido bañarse directamente en algunas fuentes de Termales de San Juan?",
+                    sub: "Why is swimming not allowed in some springs of San Juan?",
+                    options: ["A) Porque el agua es fría", "B) Por las altas temperaturas y acidez del azufre", "C) Porque hay tiburones", "D) Por falta de chalecos salvavidas"],
+                    correct: 1,
+                    info: "¡Así es! Las temperaturas extremas y minerales pueden ser peligrosos para la piel."
+                },
+                {
+                    q: "The wooden bridges at Termales de San Juan help tourists to:",
+                    sub: "Los puentes de madera en Termales de San Juan ayudan a los turistas a:",
+                    options: ["A) Fish (Pescar)", "B) Walk safely without damaging fragile ecosystem", "C) Drive cars", "D) Sleep"],
+                    correct: 1,
+                    info: "¡Exacto! Protegen el ecosistema delicado y permiten el recorrido de los visitantes."
+                },
+                {
+                    q: "¿Qué tipo de vegetación mística suele observarse rodeando las termales con la neblina?",
+                    sub: "What mystic vegetation surrounds thermal springs in fog?",
+                    options: ["A) Cactus gigantes", "B) Musgos, líquenes y musgo de páramo", "C) Palmas de cera gigantes", "D) Pinos canadienses"],
+                    correct: 1,
+                    info: "¡Correcto! Los musgos y vegetación de alta montaña le dan un aire mágico."
+                },
+                {
+                    q: "What element gives San Juan thermals their characteristic smell?",
+                    sub: "¿Qué elemento otorga a las termales su olor característico?",
+                    options: ["A) Oxygen", "B) Sulfur (Azufre)", "C) Chlorine", "D) Salt"],
+                    correct: 1,
+                    info: "¡Muy bien! El azufre (Sulfur) produce ese aroma volcánico particular."
+                },
+                {
+                    q: "¿Cuál es la altitud aproximada de las Termales de San Juan?",
+                    sub: "What is the approximate altitude of San Juan Thermals?",
+                    options: ["A) 500 msnm", "B) 3.200 a 3.400 msnm", "C) 8.000 msnm", "D) Al nivel del mar"],
+                    correct: 1,
+                    info: "¡Exacto! Se sitúan a más de 3.200 metros sobre el nivel del mar."
+                },
+                {
+                    q: "Which indigenous community respects these thermal waters as sacred sites?",
+                    sub: "¿Qué comunidad indígena respeta estas fuentes como sitios sagrados?",
+                    options: ["A) Muisca", "B) Koko-nuko Community", "C) Zenú", "D) Tairona"],
+                    correct: 1,
+                    info: "¡Grandioso! Para la comunidad Koko-nuko son sitios de sanación y respeto ancestral."
+                },
+                {
+                    q: "In English, how do you say 'Aguas Termales'?",
+                    sub: "¿Cómo se dice 'Aguas Termales' en inglés?",
+                    options: ["A) Frozen rivers", "B) Hot Springs / Thermal Waters", "C) Sea water", "D) Rain drop"],
+                    correct: 1,
+                    info: "¡Excelente! 'Hot Springs' o 'Thermal Waters' es la traducción correcta."
+                }
+            ],
+            3: [
+                {
+                    q: "¿Cómo se le conoce popularmente a los Frailejones en los páramos de Colombia?",
+                    sub: "How are Frailejones known in Colombian paramos?",
+                    options: ["A) Los arbustos de fuego", "B) Los guardianes y 'fábricas' de agua del páramo", "C) Los árboles del desierto", "D) Flores de jardín"],
+                    correct: 1,
+                    info: "¡Correcto! Los frailejones capturan la humedad de las nubes y la convierten en agua pura."
+                },
+                {
+                    q: "What is the growth rate of a typical Frailejón (Espeletia)?",
+                    sub: "¿Cuál es la tasa promedio de crecimiento de un frailejón?",
+                    options: ["A) 1 metro por mes", "B) Aproximadamente 1 centímetro por año", "C) 5 metros al año", "D) No crecen"],
+                    correct: 1,
+                    info: "¡Muy bien! Crecen solo 1 cm por año, ¡así que un frailejón de 2 metros tiene más de 200 años!"
+                },
+                {
+                    q: "¿Qué animal representativo habita en el Páramo de Puracé alimentándose de plantas y frutos?",
+                    sub: "Which animal inhabits Puracé Paramó?",
+                    options: ["A) Oso de Anteojos (Andean Bear)", "B) León africano", "C) Canguro", "D) Pingüino"],
+                    correct: 0,
+                    info: "¡Excelente! El Oso de Anteojos es el mamífero emblemático del páramo."
+                },
+                {
+                    q: "Frailejones have soft, hairy leaves that help them to:",
+                    sub: "Las hojas afelpadas del frailejón le sirven para:",
+                    options: ["A) Fly in the wind", "B) Retain moisture and protect from cold", "C) Make noise", "D) Attract fish"],
+                    correct: 1,
+                    info: "¡Así es! Su vello protector atrapa las gotas de la neblina y las protege del congelamiento."
+                },
+                {
+                    q: "¿Por qué son vitales los páramos como el de Puracé para Colombia?",
+                    sub: "Why are paramos vital for Colombia?",
+                    options: ["A) Porque producen petróleo", "B) Producen más del 70% del agua dulce del país", "C) Son zonas industriales", "D) Para construir edificios"],
+                    correct: 1,
+                    info: "¡Correcto! Los páramos son la principal fuente de agua potable para millones de personas."
+                },
+                {
+                    q: "In English, what is a 'Páramo'?",
+                    sub: "¿Cómo se describe un páramo en inglés?",
+                    options: ["A) High-altitude alpine tundra / wetland ecosystem", "B) Tropical beach", "C) Coral reef", "D) Sand dune"],
+                    correct: 0,
+                    info: "¡Exacto! Es un ecosistema neotropical de alta montaña."
+                },
+                {
+                    q: "¿Qué amenaza ambiental afecta la conservación de los frailejones en Puracé?",
+                    sub: "What threat affects frailejones conservation?",
+                    options: ["A) El turismo no regulado y los incendios", "B) El exceso de nieve", "C) Las ballenas", "D) Demasiada lluvia"],
+                    correct: 0,
+                    info: "¡Importante! Debemos cuidar el páramo no dejando basura ni encendiendo fuego."
+                },
+                {
+                    q: "What color are the flowers of most Frailejón plants?",
+                    sub: "¿De qué color son generalmente las flores del frailejón?",
+                    options: ["A) Yellow (Amarillas)", "B) Purple (Moradas)", "C) Black (Negras)", "D) Blue (Azules)"],
+                    correct: 0,
+                    info: "¡Muy bien! Tienen flores amarillas similares a pequeñas margaritas o girasoles."
+                },
+                {
+                    q: "¿Qué vestimenta ancestral de lana usan los habitantes del páramo para protegerse del frío?",
+                    sub: "What wool clothing do locals wear against cold?",
+                    options: ["A) La Ruana", "B) Vestido de baño", "C) Camiseta de manga corta", "D) Sombrero de paja fino"],
+                    correct: 0,
+                    info: "¡Excelente! La ruana de lana pura de oveja es tradicional en la región andina."
+                }
+            ],
+            4: [
+                {
+                    q: "¿Cómo se llama la hermosa caída de agua retratada en la ruta de Puracé?",
+                    sub: "What is the name of the beautiful waterfall on Puracé's route?",
+                    options: ["A) Cascada Bedón / Calaguala", "B) Cataratas del Niágara", "C) Salto del Tequendama", "D) Salto del Ángel"],
+                    correct: 0,
+                    info: "¡Correcto! La Cascada Bedón y Calaguala son íconos de la riqueza hídrica del Cauca."
+                },
+                {
+                    q: "What creates the water flow in Cascada Bedón?",
+                    sub: "¿De dónde proviene el cauce de la Cascada Bedón?",
+                    options: ["A) De la lluvia de ayer solamente", "B) Del deshielo y nacimientos en los altos páramos volcánicos", "C) De una tubería de la ciudad", "D) Del mar Caribe"],
+                    correct: 1,
+                    info: "¡Grandioso! Nace de la pureza de las altas montañas del Parque Puracé."
+                },
+                {
+                    q: "¿Qué fenómeno óptico suele formarse cuando la luz del sol impacta la brisa de la cascada?",
+                    sub: "What optical phenomenon forms when sunlight hits waterfall mist?",
+                    options: ["A) Un Arcoíris 🌈", "B) Un eclipse solar", "C) Un relámpago verde", "D) Una aurora boreal"],
+                    correct: 0,
+                    info: "¡Excelente! Los hermosos arcoíris son muy comunes en la base de la cascada."
+                },
+                {
+                    q: "In English, 'Waterfall' means:",
+                    sub: "En español, 'Waterfall' significa:",
+                    options: ["A) Cascada / Caída de agua", "B) Desierto de arena", "C) Viento fuerte", "D) Fuego artificial"],
+                    correct: 0,
+                    info: "¡Perfecto! Waterfall es la palabra en inglés para Cascada."
+                },
+                {
+                    q: "What type of rocks form the cliff walls surrounding Cascada Bedón?",
+                    sub: "¿Qué tipo de rocas forman los acantilados alrededor de la cascada?",
+                    options: ["A) Rocas volcánicas e ígneas", "B) Plástico reciclado", "C) Bloques de hielo", "D) Mármol pulido sintético"],
+                    correct: 0,
+                    info: "¡Así es! Las paredes son fruto de erupciones y flujos volcánicos milenarios."
+                },
+                {
+                    q: "¿Qué puente vial permite observar la Cascada Calaguala desde la carretera?",
+                    sub: "Which bridge lets you view Calaguala Waterfall from the road?",
+                    options: ["A) El Puente de Calaguala", "B) El puente de Brooklyn", "C) El puente Golden Gate", "D) No hay puente"],
+                    correct: 0,
+                    info: "¡Exacto! Es un sitio fotográfico obligatorio para los expedicionarios."
+                },
+                {
+                    q: "Why is water conservation important in the Puracé region?",
+                    sub: "¿Por qué es importante la conservación del agua en Puracé?",
+                    options: ["A) Because it feeds major rivers that supply millions of Colombians", "B) It is not important", "C) Only for swimming", "D) To sell ice"],
+                    correct: 0,
+                    info: "¡Es correcto! Puracé es una de las mayores estrellas hidrográficas del país."
+                },
+                {
+                    q: "¿Qué recomendación de seguridad deben seguir los estudiantes al visitar cascadas?",
+                    sub: "What safety tip should students follow near waterfalls?",
+                    options: ["A) Respetar los senderos indicados y no cruzar barandas de protección", "B) Correr por rocas húmedas", "C) Nadar cerca del borde precipicio", "D) Tirar basura"],
+                    correct: 0,
+                    info: "¡Muy bien! Siempre cuidar la seguridad personal y la integridad de la naturaleza."
+                },
+                {
+                    q: "Congratulations! Completing this puzzle grants you the title of:",
+                    sub: "¡Felicitaciones! Completar este rompecabezas te otorga el título de:",
+                    options: ["A) Gran Guardián Ancestral de Puracé 🏆", "B) Turista distraído", "C) Visitante casual", "D) Ninguno"],
+                    correct: 0,
+                    info: "¡Felicidades! Has culminado todos los niveles de Puracé Explorer."
+                }
+            ]
+        };
+
+        // ESTADO GLOBAL DEL JUEGO
+        let gameState = {
+            currentLevel: 1,
+            unlockedLevels: 1,
+            score: 0,
+            lives: 3,
+            selectedAvatar: { name: 'Volcán Puracé', icon: '🔥', img: '' },
+            unlockedTiles: [], // Fichas del rompecabezas actual (0 a 8)
+            currentQuestionIdx: 0,
+            unlockedAlbum: [false, false, false, false]
+        };
+
+        function showScreen(screenId) {
+            const screens = ['screen-home', 'screen-avatar', 'screen-levels', 'screen-game'];
+            screens.forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.remove('hidden');
+
+            // Mostrar u ocultar barra de estado superior
+            const statsBar = document.getElementById('game-stats');
+            if (screenId === 'screen-game' || screenId === 'screen-levels') {
+                statsBar.classList.remove('hidden');
+            } else {
+                statsBar.classList.add('hidden');
+            }
+        }
+
+        function selectAvatar(name, icon, imgUrl) {
+            gameState.selectedAvatar = { name, icon, img: imgUrl };
+            
+            // Actualizar badge del guardián en la barra superior
+            const badge = document.getElementById('guardian-badge');
+            badge.innerHTML = `<span class="text-base">${icon}</span> <span>${name}</span>`;
+
+            showScreen('screen-levels');
+        }
+
+        function startLevel(levelNum) {
+            if (levelNum > gameState.unlockedLevels) return;
+
+            gameState.currentLevel = levelNum;
+            gameState.currentQuestionIdx = 0;
+            gameState.unlockedTiles = [];
+            gameState.lives = 3;
+
+            updateStatsUI();
+
+            // Configurar Textos del Nivel
+            const levelInfo = LEVEL_IMAGES[levelNum];
+            document.getElementById('current-level-tag').innerText = `NIVEL ${levelNum}`;
+            document.getElementById('current-level-title').innerText = levelInfo.name;
+
+            // Renderizar la cuadrícula del rompecabezas
+            buildPuzzleGrid(levelInfo.url);
+
+            // Cargar la primera pregunta
+            loadQuestion();
+
+            showScreen('screen-game');
+        }
+
+        function buildPuzzleGrid(imageUrl) {
+            const grid = document.getElementById('puzzle-grid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < 9; i++) {
+                const tile = document.createElement('div');
+                tile.id = `tile-${i}`;
+                tile.className = 'puzzle-tile locked';
+
+                // Calcular posición de fondo para recortar la imagen en 3x3
+                const col = i % 3;
+                const row = Math.floor(i / 3);
+                const posX = col * 50; // 0%, 50%, 100%
+                const posY = row * 50; // 0%, 50%, 100%
+
+                // Guardar dataset para cuando se desbloquee
+                tile.dataset.bg = imageUrl;
+                tile.dataset.posX = `${posX}%`;
+                tile.dataset.posY = `${posY}%`;
+
+                grid.appendChild(tile);
+            }
+
+            updatePuzzleProgress();
+        }
+
+        function unlockTile(tileIndex) {
+            const tile = document.getElementById(`tile-${tileIndex}`);
+            if (tile && tile.classList.contains('locked')) {
+                tile.classList.remove('locked');
+                tile.classList.add('unlocked');
+                tile.style.backgroundImage = `url('${tile.dataset.bg}')`;
+                tile.style.backgroundPosition = `${tile.dataset.posX} ${tile.dataset.posY}`;
+                
+                gameState.unlockedTiles.push(tileIndex);
+                updatePuzzleProgress();
+            }
+        }
+
+        function updatePuzzleProgress() {
+            const count = gameState.unlockedTiles.length;
+            document.getElementById('puzzle-count').innerText = `${count}/9`;
+            const percent = (count / 9) * 100;
+            document.getElementById('puzzle-progress-bar').style.width = `${percent}%`;
+        }
+
+        function loadQuestion() {
+            const questions = QUESTIONS_DB[gameState.currentLevel];
+            
+            // Si ya respondimos las 9 preguntas
+            if (gameState.currentQuestionIdx >= questions.length) {
+                completeLevelSuccess();
+                return;
+            }
+
+            const qData = questions[gameState.currentQuestionIdx];
+
+            document.getElementById('question-number').innerText = `Pregunta ${gameState.currentQuestionIdx + 1} de 9`;
+            document.getElementById('question-text').innerText = qData.q;
+            document.getElementById('question-subtext').innerText = qData.sub;
+
+            const answersContainer = document.getElementById('answers-container');
+            answersContainer.innerHTML = '';
+
+            // Ocultar caja de retroalimentación previo
+            const feedbackBox = document.getElementById('feedback-box');
+            feedbackBox.classList.add('hidden');
+
+            qData.options.forEach((optText, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-full text-left p-3.5 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-sm font-semibold transition text-slate-200 flex items-center justify-between group';
+                btn.innerHTML = `
+                    <span>${optText}</span>
+                    <i class="fa-solid fa-chevron-right opacity-0 group-hover:opacity-100 text-amber-400 transition"></i>
+                `;
+                btn.onclick = () => handleAnswerSelect(idx, btn);
+                answersContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswerSelect(selectedIdx, btnElement) {
+            const questions = QUESTIONS_DB[gameState.currentLevel];
+            const qData = questions[gameState.currentQuestionIdx];
+            const feedbackBox = document.getElementById('feedback-box');
+
+            // Deshabilitar todos los botones para evitar doble clic
+            const allBtns = document.getElementById('answers-container').querySelectorAll('button');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (selectedIdx === qData.correct) {
+                // RESPUESTA CORRECTA
+                btnElement.classList.remove('bg-slate-800/90', 'border-slate-700');
+                btnElement.classList.add('bg-emerald-600', 'text-white', 'border-emerald-400');
+
+                feedbackBox.className = 'mt-4 p-4 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/50';
+                feedbackBox.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 mr-2 text-base"></i> ${qData.info}`;
+                feedbackBox.classList.remove('hidden');
+
+                gameState.score += 100;
+                updateStatsUI();
+
+                // Destapar exactamente 1 ficha del rompecabezas
+                unlockTile(gameState.currentQuestionIdx);
+
+                // Celebración leve con confeti
+                confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
+
+                setTimeout(() => {
+                    gameState.currentQuestionIdx++;
+                    loadQuestion();
+                }, 2200);
+
+            } else {
+                // RESPUESTA INCORRECTA
+                btnElement.classList.remove('bg-slate-800/90', 'border-slate-700');
+                btnElement.classList.add('bg-red-600', 'text-white', 'border-red-400');
+
+                // Marcar la opción correcta
+                allBtns[qData.correct].classList.add('bg-emerald-700', 'text-white');
+
+                feedbackBox.className = 'mt-4 p-4 rounded-xl text-xs sm:text-sm font-semibold bg-red-950/80 text-red-300 border border-red-500/50';
+                feedbackBox.innerHTML = `<i class="fa-solid fa-circle-xmark text-red-400 mr-2 text-base"></i> Inténtalo de nuevo. Se pierde 1 corazón de energía.`;
+                feedbackBox.classList.remove('hidden');
+
+                gameState.lives--;
+                updateStatsUI();
+
+                if (gameState.lives <= 0) {
+                    setTimeout(() => {
+                        alert("¡Te has quedado sin vidas! Intenta el nivel nuevamente para completar el rompecabezas.");
+                        startLevel(gameState.currentLevel);
+                    }, 1500);
+                    return;
+                }
+
+                setTimeout(() => {
+                    // Permitir intentar la pregunta actual re-habilitando la pregunta
+                    loadQuestion();
+                }, 2200);
+            }
+        }
+
+        function completeLevelSuccess() {
+            // Desbloquear foto en álbum
+            gameState.unlockedAlbum[gameState.currentLevel - 1] = true;
+            updateAlbumUI();
+
+            // Desbloquear siguiente nivel
+            if (gameState.currentLevel < 4) {
+                if (gameState.unlockedLevels < gameState.currentLevel + 1) {
+                    gameState.unlockedLevels = gameState.currentLevel + 1;
+                }
+            }
+
+            updateLevelsMapUI();
+
+            // Gran Lanzamiento de Confeti
+            confetti({ particleCount: 120, spread: 100, origin: { y: 0.5 } });
+
+            // Mostrar Modal de Victoria
+            const victoryModal = document.getElementById('modal-victory');
+            const levelInfo = LEVEL_IMAGES[gameState.currentLevel];
+            
+            document.getElementById('victory-message').innerText = `¡Felicidades! Has completado las 9 fichas y desbloqueado la fotografía oficial de "${levelInfo.name}".`;
+            
+            const preview = document.getElementById('victory-img-preview');
+            preview.innerHTML = `<img src="${levelInfo.url}" class="w-full h-full object-cover">`;
+
+            victoryModal.classList.remove('hidden');
+        }
+
+        function nextLevelFromModal() {
+            closeVictoryModal();
+            if (gameState.currentLevel < 4) {
+                startLevel(gameState.currentLevel + 1);
+            } else {
+                alert("¡Increíble! Has completado TODOS los niveles del juego Puracé Explorer. Revisa tu Álbum de Fotografías.");
+                showScreen('screen-levels');
+            }
+        }
+
+        function closeVictoryModal() {
+            document.getElementById('modal-victory').classList.add('hidden');
+        }
+
+        function updateStatsUI() {
+            document.getElementById('lives-count').innerText = gameState.lives;
+            document.getElementById('score-count').innerText = gameState.score;
+        }
+
+        function updateLevelsMapUI() {
+            for (let i = 2; i <= 4; i++) {
+                const card = document.getElementById(`level-card-${i}`);
+                const icon = document.getElementById(`level-icon-${i}`);
+                const btn = document.getElementById(`level-btn-${i}`);
+
+                if (i <= gameState.unlockedLevels) {
+                    card.classList.remove('opacity-75');
+                    card.classList.add('border-emerald-500/50');
+                    icon.innerText = i;
+                    icon.classList.remove('bg-slate-800', 'text-slate-400');
+                    icon.classList.add('bg-emerald-500/20', 'text-emerald-400', 'border-emerald-500/40');
+
+                    btn.disabled = false;
+                    btn.className = 'btn-gamer btn-green w-full py-3 rounded-xl font-game text-sm cursor-pointer';
+                    btn.innerText = `¡EXPLORAR NIVEL ${i}!`;
+                }
+            }
+        }
+
+        function openAlbumModal() {
+            updateAlbumUI();
+            document.getElementById('modal-album').classList.remove('hidden');
+        }
+
+        function closeAlbumModal() {
+            document.getElementById('modal-album').classList.add('hidden');
+        }
+
+        function updateAlbumUI() {
+            for (let i = 1; i <= 4; i++) {
+                const img = document.getElementById(`album-img-${i}`);
+                const lock = document.getElementById(`album-lock-${i}`);
+
+                if (gameState.unlockedAlbum[i - 1]) {
+                    img.classList.remove('blur-md', 'grayscale');
+                    lock.classList.add('hidden');
+                } else {
+                    img.classList.add('blur-md', 'grayscale');
+                    lock.classList.remove('hidden');
+                }
+            }
+        }
+
+        function abandonGame() {
+            showScreen('screen-levels');
+        }
+
+        // Evento Inicial de Carga
+        window.onload = function() {
+            // Asignar primer avatar por defecto
+            selectAvatar('Volcán Puracé', '🔥', LEVEL_IMAGES[1].url);
+            showScreen('screen-home');
+        };
+    </script>
+</body>
+</html>
